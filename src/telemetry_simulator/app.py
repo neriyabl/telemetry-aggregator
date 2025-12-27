@@ -15,11 +15,13 @@ Endpoints:
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Response
+
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 
 from common.logging import logger
-from .service import start_service, stop_service, get_counters_csv, get_health_status
+
+from .service import get_counters_csv, get_health_status, start_service, stop_service
 
 
 @asynccontextmanager
@@ -41,7 +43,7 @@ app = FastAPI(title="Telemetry Simulator", version="1.0.0", lifespan=lifespan)
 
 
 @app.get("/counters", response_class=PlainTextResponse)
-async def counters() -> Response:
+async def counters(request: Request) -> Response:
     """
     Return the current telemetry snapshot in CSV format.
 
@@ -49,9 +51,17 @@ async def counters() -> Response:
     and each column represents a telemetry metric. The snapshot reflects the
     most recently generated telemetry state.
     """
-    logger.info("Counters endpoint requested")
-    csv_text = await get_counters_csv()
-    return Response(content=csv_text, media_type="text/csv; charset=utf-8")
+    if_none_match = request.headers.get("if-none-match")
+    csv_text, etag = await get_counters_csv(if_none_match)
+
+    if csv_text is None:
+        return Response(status_code=304, headers={"ETag": etag})
+
+    return Response(
+        content=csv_text,
+        media_type="text/csv; charset=utf-8",
+        headers={"ETag": etag},
+    )
 
 
 @app.get("/health")

@@ -1,6 +1,7 @@
 import logging
-from logging.handlers import RotatingFileHandler
 import os
+from logging.handlers import RotatingFileHandler
+
 import structlog
 
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
@@ -34,11 +35,11 @@ structlog.configure(
     cache_logger_on_first_use=True,
 )
 
-console.setFormatter(structlog.stdlib.ProcessorFormatter(
-    processor=structlog.dev.ConsoleRenderer()
-))
-file_handler.setFormatter(structlog.stdlib.ProcessorFormatter(
-    processor=structlog.processors.JSONRenderer()
-))
+console.setFormatter(
+    structlog.stdlib.ProcessorFormatter(processor=structlog.dev.ConsoleRenderer())
+)
+file_handler.setFormatter(
+    structlog.stdlib.ProcessorFormatter(processor=structlog.processors.JSONRenderer())
+)
 
 logger = structlog.get_logger()
