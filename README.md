@@ -27,3 +27,8 @@ uv sync --dev
 **Simulator (9001):**
 - `GET /counters` - CSV telemetry data
 - `GET /health` - Health check
+
+**Metrics Server (8080):**
+- `GET /telemetry/metrics` - JSON metrics for all components
+- `GET /telemetry/metrics/{component_id}?metric=<name>` - Specific component metric
+- `GET /health` - Health check

@@ -8,6 +8,12 @@ from common.logging import logger
 
 from .config import settings
 from .ingestion import start_ingestion, stop_ingestion
+from .schemas import (
+    HealthResponse,
+    ListMetricsResponse,
+    MetricResponse,
+    WarmingUpResponse,
+)
 from .store import get_snapshot, meta
 
 _stop_event = None
@@ -42,27 +48,27 @@ async def timing_middleware(request: Request, call_next):
     return resp
 
 
-@app.get("/telemetry/metrics")
+@app.get("/telemetry/metrics", response_model=ListMetricsResponse)
 async def list_metrics():
     snap = await get_snapshot()
     if snap is None:
-        return JSONResponse(content={"detail": "warming_up"}, status_code=503)
+        return JSONResponse(content=WarmingUpResponse().model_dump(), status_code=503)
 
     age_ms = int((time.time() - snap.last_update_ts) * 1000)
     stale = (time.time() - snap.last_update_ts) > settings.stale_after_sec
 
-    return {
-        "data": snap.data,
-        "metric_names": snap.metric_names,
-        "switch_count": len(snap.data),
-        "last_update_ts": snap.last_update_ts,
-        "age_ms": age_ms,
-        "stale": stale,
-        "etag": snap.etag,
-    }
+    return ListMetricsResponse(
+        data=snap.data,
+        metric_names=snap.metric_names,
+        component_count=len(snap.data),
+        last_update_ts=snap.last_update_ts,
+        age_ms=age_ms,
+        stale=stale,
+        etag=snap.etag,
+    )
 
 
-@app.get("/telemetry/metrics/{component_id}")
+@app.get("/telemetry/metrics/{component_id}", response_model=MetricResponse)
 async def get_metric(component_id: str, metric: str):
     snapshot = await get_snapshot()
     if snapshot is None:
@@ -81,16 +87,16 @@ async def get_metric(component_id: str, metric: str):
         )
 
     age_ms = int((time.time() - snapshot.last_update_ts) * 1000)
-    return {
-        "component_id": component_id,
-        "metric": metric,
-        "value": component[metric],
-        "last_update_ts": snapshot.last_update_ts,
-        "age_ms": age_ms,
-        "etag": snapshot.etag,
-    }
+    return MetricResponse(
+        component_id=component_id,
+        metric=metric,
+        value=component[metric],
+        last_update_ts=snapshot.last_update_ts,
+        age_ms=age_ms,
+        etag=snapshot.etag,
+    )
 
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 async def health():
     return await meta()

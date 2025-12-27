@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 
 @dataclass
-class SwitchState:
+class ComponentState:
     bandwidth_gbps: float = 0.0
     latency_ms: float = 0.0
     packet_errors: int = 0

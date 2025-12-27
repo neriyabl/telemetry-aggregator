@@ -24,7 +24,7 @@ class MetricResponse(BaseModel):
 class ListMetricsResponse(BaseModel):
     data: dict[str, ComponentData]
     metric_names: list[str]
-    switch_count: int
+    component_count: int
     last_update_ts: float
     age_ms: int
     stale: bool
