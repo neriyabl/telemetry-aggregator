@@ -19,9 +19,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
 
-from common.logging import logger
+from common.logging import get_logger, setup_logging
 
+from .config import settings
 from .service import get_counters_csv, get_health_status, start_service, stop_service
+
+# Setup logging for this service
+setup_logging("telemetry-simulator", settings.log_file_path)
+logger = get_logger(__name__)
 
 
 @asynccontextmanager

@@ -4,21 +4,17 @@ import random
 import time
 
 from common.etags import etag_from_ts, normalize_etag
-from common.logging import logger
+from common.logging import get_logger
 
-from .config import (
-    ERROR_BURST_PROBABILITY,
-    METRICS,
-    SPIKE_PROBABILITY,
-    SWITCH_COUNT,
-    UPDATE_INTERVAL_SEC,
-)
+from .config import settings
 from .model import ComponentState
 
 _snapshot: dict[str, ComponentState] = {}
 _last_update_ts = 0.0
 _lock = asyncio.Lock()
 _update_task = None
+
+logger = get_logger(__name__)
 
 
 def create_initial_state() -> ComponentState:
@@ -73,13 +69,13 @@ def update_component_state(state: ComponentState) -> ComponentState:
 
     # Update latency with spikes
     latency = max(state.latency_ms + random.uniform(-0.5, 0.5), 0.2)
-    if random.random() < SPIKE_PROBABILITY:
+    if random.random() < settings.spike_probability:
         latency += random.uniform(10.0, 80.0)
         logger.debug("Latency spike occurred", new_latency=latency)
 
     # Update packet errors with bursts
     packet_errors = state.packet_errors
-    if random.random() < ERROR_BURST_PROBABILITY:
+    if random.random() < settings.error_burst_probability:
         packet_errors += random.randint(1, 20)
         logger.debug("Error burst occurred", new_errors=packet_errors)
     else:
@@ -138,7 +134,7 @@ def snapshot_to_csv(snapshot: dict[str, ComponentState], last_update: float) -> 
     Returns:
         CSV formatted string with headers and data for all components.
     """
-    lines = ["component_id," + ",".join(METRICS) + ",last_update_epoch"]
+    lines = ["component_id," + ",".join(settings.metrics) + ",last_update_epoch"]
 
     for cid in snapshot.keys():
         state = snapshot[cid]
@@ -169,14 +165,16 @@ async def start_service():
 
     if _update_task and not _update_task.done():
         return
-    logger.info("Starting telemetry service", component_count=SWITCH_COUNT)
+    logger.info("Starting telemetry service", component_count=settings.switch_count)
 
-    component_ids = [f"comp{i:04d}" for i in range(1, SWITCH_COUNT + 1)]
+    component_ids = [f"comp{i:04d}" for i in range(1, settings.switch_count + 1)]
     _snapshot = create_initial_snapshot(component_ids)
     _last_update_ts = time.time()
     _update_task = asyncio.create_task(_update_loop())
 
-    logger.info("Telemetry service started", update_interval=UPDATE_INTERVAL_SEC)
+    logger.info(
+        "Telemetry service started", update_interval=settings.update_interval_sec
+    )
 
 
 async def stop_service():
@@ -208,7 +206,7 @@ async def _update_loop():
     """
     global _snapshot, _last_update_ts
     while True:
-        await asyncio.sleep(UPDATE_INTERVAL_SEC)
+        await asyncio.sleep(settings.update_interval_sec)
 
         new_snapshot, timestamp = update_snapshot(_snapshot)
 
@@ -265,8 +263,8 @@ def get_health_status() -> dict:
     """
     status = {
         "status": "ok",
-        "component_count": SWITCH_COUNT,
-        "update_interval_sec": UPDATE_INTERVAL_SEC,
+        "component_count": settings.switch_count,
+        "update_interval_sec": settings.update_interval_sec,
     }
 
     logger.debug("Health check requested", **status)

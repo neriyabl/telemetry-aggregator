@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
-from common.logging import logger
+from common.logging import get_logger, setup_logging
 
 from .config import settings
 from .ingestion import start_ingestion, stop_ingestion
@@ -15,6 +15,10 @@ from .schemas import (
     WarmingUpResponse,
 )
 from .store import get_snapshot, meta
+
+# Setup logging for this service
+setup_logging("telemetry-api", settings.log_file_path)
+logger = get_logger(__name__)
 
 _stop_event = None
 _task = None

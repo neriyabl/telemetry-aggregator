@@ -2,7 +2,11 @@ import asyncio
 import time
 from typing import Any
 
+from common.logging import get_logger
+
 from .schemas import Snapshot
+
+logger = get_logger(__name__)
 
 _lock = asyncio.Lock()
 _snapshot: Snapshot | None = None

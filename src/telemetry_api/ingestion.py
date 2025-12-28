@@ -5,9 +5,11 @@ import time
 
 import httpx
 
-from common.logging import logger
+from common.logging import get_logger
 
 from .store import Snapshot, get_etag, set_snapshot
+
+logger = get_logger(__name__)
 
 
 def _parse_number(v: str) -> int | float:
