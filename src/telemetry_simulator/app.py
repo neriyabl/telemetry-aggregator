@@ -8,10 +8,6 @@ updated snapshot of telemetry metrics and exposes them via a CSV-based endpoint.
 The simulator is intentionally stateful and active: metrics are updated in the
 background at a configurable interval, and API requests always return the latest
 available snapshot.
-
-Endpoints:
-- GET /counters : Returns the current telemetry snapshot as a CSV matrix.
-- GET /health   : Returns basic liveness and configuration information.
 """
 
 from contextlib import asynccontextmanager

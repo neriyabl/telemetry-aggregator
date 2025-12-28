@@ -1,3 +1,14 @@
+"""
+Telemetry Aggregation API.
+
+This service exposes a low-latency REST API for querying real-time telemetry data
+aggregated from an external telemetry source. Telemetry ingestion runs asynchronously
+in the background, while API handlers serve data from the latest in-memory snapshot.
+
+The service is optimized for fast, non-blocking reads and provides basic freshness
+and health metadata alongside telemetry responses.
+"""
+
 import time
 from contextlib import asynccontextmanager
 
