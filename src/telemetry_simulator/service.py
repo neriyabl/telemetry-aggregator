@@ -213,7 +213,9 @@ async def _update_loop():
     """
     global _snapshot, _last_update_ts
     while True:
-        await asyncio.sleep(settings.update_interval_sec)
+        # add random percent of jitter to simulate more reel updates time
+        jitter = settings.update_interval_sec * random.uniform(-0.1, 0.1)
+        await asyncio.sleep(settings.update_interval_sec + jitter)
 
         new_snapshot, timestamp = update_snapshot(_snapshot)
 

@@ -12,7 +12,8 @@ The system consists of two independent services:
 
 1. **Telemetry Simulator**  
    Simulates a set of network switches producing telemetry metrics (bandwidth, latency, errors).
-   Metrics are updated periodically and exposed as a CSV matrix over HTTP.
+   Metrics are updated periodically with randomized timing jitter to better approximate real-world
+   sampling skew between devices, and are exposed as a CSV matrix over HTTP.
 
 2. **Telemetry Aggregation API**  
    Polls telemetry data from the simulator asynchronously, maintains the latest snapshot in memory,
@@ -46,6 +47,10 @@ The system consists of two independent services:
 - **Freshness and staleness tracking**  
   API responses include timestamps, age, and staleness indicators to make data freshness explicit.
 
+- **Realistic update jitter**  
+  Telemetry updates include small randomized timing variations to simulate non-deterministic
+  sampling behavior commonly observed in real network devices.
+
 - **No persistence by design**  
   The system favors fast startup and simplicity over durability. After restart, telemetry is
   re-ingested from the source.
@@ -70,6 +75,10 @@ Durability, replay, and fault-tolerance are deliberately left out of scope. In a
 system, these concerns could be addressed by introducing durable storage or streaming backends
 (e.g., Kafka, Redis Streams, or a time-series database), depending on throughput and reliability
 requirements.
+
+While the simulator does not model per-device clocks or partial updates, it introduces
+temporal jitter in update timing to avoid perfectly synchronized behavior and better reflect
+real-world telemetry collection patterns.
 
 ---
 
