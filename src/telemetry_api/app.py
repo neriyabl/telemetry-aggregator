@@ -64,7 +64,7 @@ async def list_metrics():
     return ListMetricsResponse(
         data=snap.data,
         metric_names=snap.metric_names,
-        component_count=len(snap.data),
+        switch_count=len(snap.data),
         last_update_ts=snap.last_update_ts,
         age_ms=age_ms,
         stale=stale,
@@ -72,29 +72,27 @@ async def list_metrics():
     )
 
 
-@app.get("/telemetry/metrics/{component_id}", response_model=MetricResponse)
-async def get_metric(component_id: str, metric: str):
+@app.get("/telemetry/metrics/{switch_id}", response_model=MetricResponse)
+async def get_metric(switch_id: str, metric: str):
     snapshot = await get_snapshot()
     if snapshot is None:
         raise HTTPException(status_code=503, detail="warming_up")
 
-    component = snapshot.data.get(component_id)
-    if component is None:
-        raise HTTPException(
-            status_code=404, detail=f"component {component_id} Not Found"
-        )
+    switch = snapshot.data.get(switch_id)
+    if switch is None:
+        raise HTTPException(status_code=404, detail=f"switch {switch_id} Not Found")
 
-    if metric not in component:
+    if metric not in switch:
         raise HTTPException(
             status_code=404,
-            detail=f"unknown metric '{metric}' for component {component_id}",
+            detail=f"unknown metric '{metric}' for switch {switch_id}",
         )
 
     age_ms = int((time.time() - snapshot.last_update_ts) * 1000)
     return MetricResponse(
-        component_id=component_id,
+        switch_id=switch_id,
         metric=metric,
-        value=component[metric],
+        value=switch[metric],
         last_update_ts=snapshot.last_update_ts,
         age_ms=age_ms,
         etag=snapshot.etag,

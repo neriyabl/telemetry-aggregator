@@ -2,18 +2,18 @@ from pydantic import BaseModel, Field
 
 MetricName = str
 MetricValue = int | float
-ComponentData = dict[MetricName, MetricValue]
+SwitchData = dict[MetricName, MetricValue]
 
 
 class Snapshot(BaseModel):
-    data: dict[str, ComponentData]
+    data: dict[str, SwitchData]
     metric_names: list[str]
     last_update_ts: float
     etag: str | None
 
 
 class MetricResponse(BaseModel):
-    component_id: str
+    switch_id: str
     metric: str
     value: MetricValue
     last_update_ts: float
@@ -22,9 +22,9 @@ class MetricResponse(BaseModel):
 
 
 class ListMetricsResponse(BaseModel):
-    data: dict[str, ComponentData]
+    data: dict[str, SwitchData]
     metric_names: list[str]
-    component_count: int
+    switch_count: int
     last_update_ts: float
     age_ms: int
     stale: bool

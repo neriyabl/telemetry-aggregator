@@ -29,6 +29,6 @@ uv sync --dev
 - `GET /health` - Health check
 
 **Metrics Server (8080):**
-- `GET /telemetry/metrics` - JSON metrics for all components
-- `GET /telemetry/metrics/{component_id}?metric=<name>` - Specific component metric
+- `GET /telemetry/metrics` - JSON metrics for all switches
+- `GET /telemetry/metrics/{switch_id}?metric=<name>` - Specific switch metric
 - `GET /health` - Health check

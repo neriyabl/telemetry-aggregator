@@ -7,9 +7,9 @@ from common.etags import etag_from_ts, normalize_etag
 from common.logging import get_logger
 
 from .config import settings
-from .model import ComponentState
+from .model import SwitchState
 
-_snapshot: dict[str, ComponentState] = {}
+_snapshot: dict[str, SwitchState] = {}
 _last_update_ts = 0.0
 _lock = asyncio.Lock()
 _update_task = None
@@ -17,15 +17,15 @@ _update_task = None
 logger = get_logger(__name__)
 
 
-def create_initial_state() -> ComponentState:
+def create_initial_state() -> SwitchState:
     """
-    Create initial random state for a network component.
+    Create initial random state for a network switch.
 
     Returns:
-        ComponentState with randomized initial values for bandwidth, latency,
+        SwitchState with randomized initial values for bandwidth, latency,
         zero packet errors, and random bandwidth trend.
     """
-    return ComponentState(
+    return SwitchState(
         bandwidth_gbps=random.uniform(5.0, 80.0),
         latency_ms=random.uniform(1.0, 5.0),
         packet_errors=0,
@@ -33,30 +33,30 @@ def create_initial_state() -> ComponentState:
     )
 
 
-def create_initial_snapshot(component_ids: list[str]) -> dict[str, ComponentState]:
+def create_initial_snapshot(switch_ids: list[str]) -> dict[str, SwitchState]:
     """
-    Create initial snapshot with random states for all components.
+    Create initial snapshot with random states for all switches.
 
     Args:
-        component_ids: List of component identifier strings.
+        switch_ids: List of switch identifier strings.
 
     Returns:
-        Dictionary mapping component IDs to their initial ComponentState objects.
+        Dictionary mapping switch IDs to their initial SwitchState objects.
     """
-    snapshot = {cid: create_initial_state() for cid in component_ids}
-    logger.info("Created initial snapshot", component_count=len(snapshot))
+    snapshot = {sid: create_initial_state() for sid in switch_ids}
+    logger.info("Created initial snapshot", switch_count=len(snapshot))
     return snapshot
 
 
-def update_component_state(state: ComponentState) -> ComponentState:
+def update_switch_state(state: SwitchState) -> SwitchState:
     """
-    Update component state with realistic variations and occasional spikes/bursts.
+    Update switch state with realistic variations and occasional spikes/bursts.
 
     Args:
-        state: Current ComponentState to update.
+        state: Current SwitchState to update.
 
     Returns:
-        New ComponentState with updated values including bandwidth variations,
+        New SwitchState with updated values including bandwidth variations,
         latency spikes, and packet error bursts based on configured probabilities.
     """
     # Update bandwidth trend
@@ -81,7 +81,7 @@ def update_component_state(state: ComponentState) -> ComponentState:
     else:
         packet_errors = max(packet_errors - random.randint(0, 2), 0)
 
-    return ComponentState(
+    return SwitchState(
         bandwidth_gbps=round(bandwidth, 2),
         latency_ms=round(latency, 2),
         packet_errors=int(packet_errors),
@@ -90,22 +90,20 @@ def update_component_state(state: ComponentState) -> ComponentState:
 
 
 def update_snapshot(
-    snapshot: dict[str, ComponentState],
-) -> tuple[dict[str, ComponentState], float]:
+    snapshot: dict[str, SwitchState],
+) -> tuple[dict[str, SwitchState], float]:
     """
-    Update all components in snapshot and return new snapshot with timestamp.
+    Update all switches in snapshot and return new snapshot with timestamp.
 
     Args:
-        snapshot: Current snapshot dictionary mapping component IDs to states.
+        snapshot: Current snapshot dictionary mapping switch IDs to states.
 
     Returns:
         Tuple containing:
-        - New snapshot with updated component states
+        - New snapshot with updated switch states
         - Current timestamp as float
     """
-    new_snapshot = {
-        cid: update_component_state(state) for cid, state in snapshot.items()
-    }
+    new_snapshot = {sid: update_switch_state(state) for sid, state in snapshot.items()}
     timestamp = time.time()
 
     # Log aggregate metrics
@@ -123,23 +121,23 @@ def update_snapshot(
     return new_snapshot, timestamp
 
 
-def snapshot_to_csv(snapshot: dict[str, ComponentState], last_update: float) -> str:
+def snapshot_to_csv(snapshot: dict[str, SwitchState], last_update: float) -> str:
     """
     Convert snapshot to CSV format with headers.
 
     Args:
-        snapshot: Dictionary mapping component IDs to their current states.
+        snapshot: Dictionary mapping switch IDs to their current states.
         last_update: Timestamp of the last update as float.
 
     Returns:
-        CSV formatted string with headers and data for all components.
+        CSV formatted string with headers and data for all switches.
     """
-    lines = ["component_id," + ",".join(settings.metrics) + ",last_update_epoch"]
+    lines = ["switch_id," + ",".join(settings.metrics) + ",last_update_epoch"]
 
-    for cid in snapshot.keys():
-        state = snapshot[cid]
+    for sid in snapshot.keys():
+        state = snapshot[sid]
         row = [
-            cid,
+            sid,
             f"{state.bandwidth_gbps:.2f}",
             f"{state.latency_ms:.2f}",
             str(state.packet_errors),
@@ -157,7 +155,7 @@ async def start_service():
     """
     Start the telemetry service with initial data and background update task.
 
-    Initializes component data, creates background update task, and starts
+    Initializes switch data, creates background update task, and starts
     periodic telemetry updates. Safe to call multiple times - won't restart
     if already running.
     """
@@ -165,10 +163,10 @@ async def start_service():
 
     if _update_task and not _update_task.done():
         return
-    logger.info("Starting telemetry service", component_count=settings.switch_count)
+    logger.info("Starting telemetry service", switch_count=settings.switch_count)
 
-    component_ids = [f"comp{i:04d}" for i in range(1, settings.switch_count + 1)]
-    _snapshot = create_initial_snapshot(component_ids)
+    switch_ids = [f"sw{i:04d}" for i in range(1, settings.switch_count + 1)]
+    _snapshot = create_initial_snapshot(switch_ids)
     _last_update_ts = time.time()
     _update_task = asyncio.create_task(_update_loop())
 
@@ -201,7 +199,7 @@ async def _update_loop():
     """
     Background task that periodically updates telemetry data.
 
-    Runs continuously, updating all component states at configured intervals
+    Runs continuously, updating all switch states at configured intervals
     and maintaining thread-safe access to the global snapshot.
     """
     global _snapshot, _last_update_ts
@@ -216,7 +214,7 @@ async def _update_loop():
 
         logger.debug(
             "Updated telemetry data",
-            components_updated=len(_snapshot),
+            switches_updated=len(_snapshot),
             timestamp=timestamp,
         )
 
@@ -247,7 +245,7 @@ async def get_counters_csv(if_none_match: str | None) -> tuple[str | None, str]:
     csv_data = snapshot_to_csv(snapshot, last_update_ts)
     logger.debug(
         "Generated CSV counters",
-        components=len(snapshot),
+        switches=len(snapshot),
         last_update=last_update_ts,
         etag=etag_value,
     )
@@ -259,11 +257,11 @@ def get_health_status() -> dict:
     Get health status information for the telemetry service.
 
     Returns:
-        Dictionary containing service status, component count, and update interval.
+        Dictionary containing service status, switch count, and update interval.
     """
     status = {
         "status": "ok",
-        "component_count": settings.switch_count,
+        "switch_count": settings.switch_count,
         "update_interval_sec": settings.update_interval_sec,
     }
 

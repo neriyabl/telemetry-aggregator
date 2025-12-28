@@ -28,21 +28,21 @@ def parse_counters_csv(
         raise ValueError("CSV has no header")
 
     fieldnames = reader.fieldnames
-    if "component_id" not in fieldnames:
-        raise ValueError("CSV missing 'component_id' column")
+    if "switch_id" not in fieldnames:
+        raise ValueError("CSV missing 'switch_id' column")
     if "last_update_epoch" not in fieldnames:
         raise ValueError("CSV missing 'last_update_epoch' column")
 
     metric_names = [
-        c for c in fieldnames if c not in ("component_id", "last_update_epoch")
+        c for c in fieldnames if c not in ("switch_id", "last_update_epoch")
     ]
 
     data: dict[str, dict[str, float | int]] = {}
     last_update_ts: float | None = None
 
     for row in reader:
-        cid = row.get("component_id")
-        if not cid:
+        sid = row.get("switch_id")
+        if not sid:
             continue
 
         if last_update_ts is None:
@@ -55,7 +55,7 @@ def parse_counters_csv(
                 continue
             metrics[m] = _parse_number(raw)
 
-        data[cid] = metrics
+        data[sid] = metrics
 
     if last_update_ts is None:
         last_update_ts = time.time()
@@ -123,7 +123,7 @@ async def ingestion_loop(
 
             logger.info(
                 "snapshot_updated",
-                components=len(data),
+                switches=len(data),
                 metrics=len(metric_names),
                 fetch_ms=fetch_ms,
                 parse_ms=parse_ms,
