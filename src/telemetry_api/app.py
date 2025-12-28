@@ -79,7 +79,6 @@ async def list_metrics():
         last_update_ts=snap.last_update_ts,
         age_ms=age_ms,
         stale=stale,
-        etag=snap.etag,
     )
 
 
@@ -111,7 +110,6 @@ async def get_metric(switch_id: str, metric: str):
         value=switch[metric],
         last_update_ts=snapshot.last_update_ts,
         age_ms=age_ms,
-        etag=snapshot.etag,
     )
 
 

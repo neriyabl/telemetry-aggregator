@@ -16,7 +16,14 @@ class SimulatorSettings(BaseSettings):
     # Metrics configuration
     @property
     def metrics(self) -> list[str]:
-        return ["bandwidth_gbps", "latency_ms", "packet_errors"]
+        return [
+            "bandwidth_gbps",
+            "latency_ms",
+            "packet_errors",
+            "cpu_util_pct",
+            "mem_util_pct",
+            "drops",
+        ]
 
 
 settings = SimulatorSettings()

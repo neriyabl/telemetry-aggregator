@@ -18,7 +18,6 @@ class MetricResponse(BaseModel):
     value: MetricValue
     last_update_ts: float
     age_ms: int
-    etag: str | None = None
 
 
 class ListMetricsResponse(BaseModel):
@@ -28,7 +27,6 @@ class ListMetricsResponse(BaseModel):
     last_update_ts: float
     age_ms: int
     stale: bool
-    etag: str | None = None
 
 
 class HealthResponse(BaseModel):

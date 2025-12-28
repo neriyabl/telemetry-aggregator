@@ -8,6 +8,14 @@ from common.logging import get_logger
 
 from .config import settings
 from .model import SwitchState
+from .state_updater import (
+    update_bandwidth,
+    update_cpu_utilization,
+    update_drops,
+    update_latency,
+    update_memory_utilization,
+    update_packet_errors,
+)
 
 _snapshot: dict[str, SwitchState] = {}
 _last_update_ts = 0.0
@@ -30,6 +38,9 @@ def create_initial_state() -> SwitchState:
         latency_ms=random.uniform(1.0, 5.0),
         packet_errors=0,
         bw_trend=random.uniform(-0.2, 0.2),
+        cpu_util_pct=random.uniform(10.0, 40.0),
+        mem_util_pct=random.uniform(20.0, 60.0),
+        drops=0,
     )
 
 
@@ -59,33 +70,22 @@ def update_switch_state(state: SwitchState) -> SwitchState:
         New SwitchState with updated values including bandwidth variations,
         latency spikes, and packet error bursts based on configured probabilities.
     """
-    # Update bandwidth trend
-    bw_trend = state.bw_trend + random.uniform(-0.05, 0.05)
-    bw_trend = max(min(bw_trend, 1.0), -1.0)
-
-    # Update bandwidth
-    bandwidth = state.bandwidth_gbps + bw_trend + random.uniform(-2.0, 2.0)
-    bandwidth = max(min(bandwidth, 100.0), 0.0)
-
-    # Update latency with spikes
-    latency = max(state.latency_ms + random.uniform(-0.5, 0.5), 0.2)
-    if random.random() < settings.spike_probability:
-        latency += random.uniform(10.0, 80.0)
-        logger.debug("Latency spike occurred", new_latency=latency)
-
-    # Update packet errors with bursts
-    packet_errors = state.packet_errors
-    if random.random() < settings.error_burst_probability:
-        packet_errors += random.randint(1, 20)
-        logger.debug("Error burst occurred", new_errors=packet_errors)
-    else:
-        packet_errors = max(packet_errors - random.randint(0, 2), 0)
+    # Update each metric using dedicated functions
+    bandwidth, bw_trend = update_bandwidth(state.bandwidth_gbps, state.bw_trend)
+    latency = update_latency(state.latency_ms)
+    packet_errors = update_packet_errors(state.packet_errors)
+    cpu_util = update_cpu_utilization(state.cpu_util_pct)
+    mem_util = update_memory_utilization(state.mem_util_pct)
+    drops = update_drops(state.drops, bandwidth, latency)
 
     return SwitchState(
-        bandwidth_gbps=round(bandwidth, 2),
-        latency_ms=round(latency, 2),
-        packet_errors=int(packet_errors),
+        bandwidth_gbps=bandwidth,
+        latency_ms=latency,
+        packet_errors=packet_errors,
         bw_trend=bw_trend,
+        cpu_util_pct=cpu_util,
+        mem_util_pct=mem_util,
+        drops=drops,
     )
 
 
@@ -110,12 +110,18 @@ def update_snapshot(
     total_bandwidth = sum(s.bandwidth_gbps for s in new_snapshot.values())
     avg_latency = sum(s.latency_ms for s in new_snapshot.values()) / len(new_snapshot)
     total_errors = sum(s.packet_errors for s in new_snapshot.values())
+    avg_cpu = sum(s.cpu_util_pct for s in new_snapshot.values()) / len(new_snapshot)
+    avg_mem = sum(s.mem_util_pct for s in new_snapshot.values()) / len(new_snapshot)
+    total_drops = sum(s.drops for s in new_snapshot.values())
 
     logger.debug(
         "Snapshot updated",
         total_bandwidth_gbps=round(total_bandwidth, 2),
         avg_latency_ms=round(avg_latency, 2),
         total_packet_errors=total_errors,
+        avg_cpu_util_pct=round(avg_cpu, 1),
+        avg_mem_util_pct=round(avg_mem, 1),
+        total_drops=total_drops,
     )
 
     return new_snapshot, timestamp
@@ -141,6 +147,9 @@ def snapshot_to_csv(snapshot: dict[str, SwitchState], last_update: float) -> str
             f"{state.bandwidth_gbps:.2f}",
             f"{state.latency_ms:.2f}",
             str(state.packet_errors),
+            f"{state.cpu_util_pct:.1f}",
+            f"{state.mem_util_pct:.1f}",
+            str(state.drops),
             f"{last_update:.3f}",
         ]
         lines.append(",".join(row))

@@ -4,11 +4,12 @@ import io
 import time
 
 import httpx
+from fastapi import status
 
 from common.etags import normalize_etag
 from common.logging import get_logger
 
-from .schemas import Snapshot
+from .schemas import Snapshot, SwitchData
 from .store import get_etag, set_snapshot
 
 logger = get_logger(__name__)
@@ -24,7 +25,7 @@ def _parse_number(v: str) -> int | float:
 
 def parse_counters_csv(
     csv_text: str,
-) -> tuple[dict[str, dict[str, float | int]], float, list[str]]:
+) -> tuple[dict[str, SwitchData], float, list[str]]:
     reader = csv.DictReader(io.StringIO(csv_text))
     if not reader.fieldnames:
         raise ValueError("CSV has no header")
@@ -39,7 +40,7 @@ def parse_counters_csv(
         c for c in fieldnames if c not in ("switch_id", "last_update_epoch")
     ]
 
-    data: dict[str, dict[str, float | int]] = {}
+    data: dict[str, SwitchData] = {}
     last_update_ts: float | None = None
 
     for row in reader:
@@ -90,12 +91,12 @@ async def ingestion_loop(
 
             fetch_ms = int((time.perf_counter() - t0) * 1000)
 
-            if resp.status_code == 304:
+            if resp.status_code == status.HTTP_304_NOT_MODIFIED:
                 logger.debug("poll_not_modified", fetch_ms=fetch_ms, etag=etag)
                 await asyncio.sleep(poll_interval_sec)
                 continue
 
-            if resp.status_code != 200:
+            if resp.status_code != status.HTTP_200_OK:
                 logger.warning(
                     "poll_bad_status", status=resp.status_code, fetch_ms=fetch_ms
                 )
