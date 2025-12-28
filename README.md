@@ -215,12 +215,3 @@ while the simulator and API were running on the same machine.
 
 ---
 
-### Extreme Load (Stress Test)
-
-At `wrk -t8 -c400` the system hit OS/uvicorn limits (e.g., "too many open files" / socket errors),
-resulting in timeouts and connection/read errors and a sharp drop in throughput (~300–400 req/s).
-
-This is an expected limitation for extreme connection counts on a developer machine and can be improved by:
-- Increasing file descriptor limits (`ulimit -n`) and OS socket tuning,
-- Running more workers (multi-process) depending on the deployment model,
-- Applying backpressure / connection limits at the ingress (reverse proxy).
