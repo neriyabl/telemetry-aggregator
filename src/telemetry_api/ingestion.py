@@ -2,6 +2,8 @@ import asyncio
 import csv
 import io
 import time
+from collections.abc import Mapping
+from types import MappingProxyType
 
 import httpx
 from fastapi import status
@@ -13,6 +15,14 @@ from .schemas import Snapshot, SwitchData
 from .store import get_etag, set_snapshot
 
 logger = get_logger(__name__)
+
+
+def freeze_switch_data(
+    data: dict[str, dict[str, int | float]],
+) -> Mapping[str, Mapping[str, int | float]]:
+    # Freeze inner dicts first, then the outer dict.
+    frozen_inner = {sid: MappingProxyType(metrics) for sid, metrics in data.items()}
+    return MappingProxyType(frozen_inner)
 
 
 def _parse_number(v: str) -> int | float:
@@ -113,6 +123,8 @@ async def ingestion_loop(
             t1 = time.perf_counter()
             try:
                 data, last_update_ts, metric_names = parse_counters_csv(csv_text)
+                # freeze data to ensure snapsot data is imutable
+                frozen_data = freeze_switch_data(data)
             except Exception as e:
                 logger.warning("parse_failed", err=str(e))
                 await asyncio.sleep(poll_interval_sec)
@@ -121,8 +133,8 @@ async def ingestion_loop(
 
             await set_snapshot(
                 Snapshot(
-                    data=data,
-                    metric_names=metric_names,
+                    data=frozen_data,
+                    metric_names=tuple(metric_names),
                     last_update_ts=last_update_ts,
                     etag=new_etag,
                 )

@@ -1,13 +1,17 @@
-from pydantic import BaseModel
+from collections.abc import Mapping
 
-MetricName = str
+from pydantic import BaseModel, ConfigDict
+
 MetricValue = int | float
-SwitchData = dict[MetricName, MetricValue]
+SwitchData = dict[str, MetricValue]
+MappingSwitchData = Mapping[str, MetricValue]
 
 
 class Snapshot(BaseModel):
-    data: dict[str, SwitchData]
-    metric_names: list[str]
+    model_config = ConfigDict(frozen=True)
+
+    data: Mapping[str, MappingSwitchData]
+    metric_names: tuple[str, ...]
     last_update_ts: float
     etag: str | None
 
