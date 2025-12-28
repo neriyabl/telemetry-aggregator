@@ -181,3 +181,46 @@ In a production environment, this system could be extended with:
 - Persistent or replicated state
 - Horizontal scaling of the API layer
 - Metrics export (Prometheus) and distributed tracing
+
+
+## Performance Benchmarks
+
+Benchmarks were executed locally using `wrk` against the Telemetry Aggregator API
+while the simulator and API were running on the same machine.
+
+> Notes:
+> - Results depend on host OS limits (file descriptors / sockets) and CPU scheduling.
+> - `wrk --latency` reports latency percentiles (p50/p75/p90/p99).
+
+### ListMetrics (GET `/telemetry/metrics`)
+
+| Scenario | Threads | Conns | Duration | Throughput (req/s) | Avg Latency | p50 | p90 | p99 | Max |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Warmup-style / light load | 2 | 10 | 10s | **~3349** | 3.02ms | 2.92ms | 3.29ms | 4.89ms | 24.22ms |
+| Medium concurrency | 4 | 20 | 30s | **~3637** | 5.56ms | 5.40ms | 5.91ms | 7.41ms | 69.57ms |
+| High concurrency | 4 | 200 | 30s | **~3526** | 56.54ms | 54.15ms | 59.13ms | 85.11ms | 92.90ms |
+
+**Takeaway:** throughput stays ~3.5–3.6k req/s even under 200 connections, but latency increases due to concurrency pressure and scheduling overhead.
+
+---
+
+### GetMetric (GET `/telemetry/metrics/{switch_id}?metric=...`)
+
+| Scenario | Threads | Conns | Duration | Throughput (req/s) | Avg Latency | p50 | p90 | p99 | Max |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Medium concurrency | 4 | 20 | 30s | **~4867** | 4.15ms | 4.03ms | 4.52ms | 6.32ms | 33.31ms |
+| High concurrency | 4 | 200 | 30s | **~4823** | 41.39ms | 38.85ms | 56.83ms | 71.12ms | 106.15ms |
+
+**Takeaway:** single-metric endpoint is faster and achieves ~4.8–4.9k req/s at moderate concurrency. Under 200 connections, throughput remains high but latency increases significantly.
+
+---
+
+### Extreme Load (Stress Test)
+
+At `wrk -t8 -c400` the system hit OS/uvicorn limits (e.g., "too many open files" / socket errors),
+resulting in timeouts and connection/read errors and a sharp drop in throughput (~300–400 req/s).
+
+This is an expected limitation for extreme connection counts on a developer machine and can be improved by:
+- Increasing file descriptor limits (`ulimit -n`) and OS socket tuning,
+- Running more workers (multi-process) depending on the deployment model,
+- Applying backpressure / connection limits at the ingress (reverse proxy).
