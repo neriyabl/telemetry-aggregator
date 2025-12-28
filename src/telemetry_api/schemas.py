@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 MetricName = str
 MetricValue = int | float
@@ -29,10 +29,6 @@ class ListMetricsResponse(BaseModel):
     age_ms: int
     stale: bool
     etag: str | None = None
-
-
-class WarmingUpResponse(BaseModel):
-    detail: str = Field(default="warming_up")
 
 
 class HealthResponse(BaseModel):

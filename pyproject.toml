@@ -16,6 +16,8 @@ dependencies = [
 dev = [
     "ruff",
     "pre-commit",
+    "pytest",
+    "pytest-asyncio",
 ]
 
 [build-system]
@@ -35,3 +37,13 @@ ignore = ["E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["telemetry_simulator", "telemetry_api", "common"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+]

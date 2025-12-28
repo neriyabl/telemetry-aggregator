@@ -16,7 +16,7 @@ Endpoints:
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, status
 from fastapi.responses import PlainTextResponse
 
 from common.logging import get_logger, setup_logging
@@ -60,7 +60,9 @@ async def counters(request: Request) -> Response:
     csv_text, etag = await get_counters_csv(if_none_match)
 
     if csv_text is None:
-        return Response(status_code=304, headers={"ETag": etag})
+        return Response(
+            status_code=status.HTTP_304_NOT_MODIFIED, headers={"ETag": etag}
+        )
 
     return Response(
         content=csv_text,

@@ -32,11 +32,13 @@ async def get_etag() -> str | None:
 
 async def meta() -> dict[str, Any]:
     async with _lock:
-        snap = _snapshot
+        snapshot = _snapshot
         return {
-            "has_snapshot": snap is not None,
-            "last_update_ts": snap.last_update_ts if snap else None,
-            "age_ms": int((time.time() - snap.last_update_ts) * 1000) if snap else None,
-            "etag": snap.etag if snap else None,
+            "has_snapshot": snapshot is not None,
+            "last_update_ts": snapshot.last_update_ts if snapshot else None,
+            "age_ms": int((time.time() - snapshot.last_update_ts) * 1000)
+            if snapshot
+            else None,
+            "etag": snapshot.etag if snapshot else None,
             "last_ingest_ts": _last_ingest_ts,
         }

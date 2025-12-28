@@ -1,8 +1,7 @@
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI, HTTPException, Request, status
 
 from common.logging import get_logger, setup_logging
 
@@ -12,7 +11,6 @@ from .schemas import (
     HealthResponse,
     ListMetricsResponse,
     MetricResponse,
-    WarmingUpResponse,
 )
 from .store import get_snapshot, meta
 
@@ -56,7 +54,9 @@ async def timing_middleware(request: Request, call_next):
 async def list_metrics():
     snap = await get_snapshot()
     if snap is None:
-        return JSONResponse(content=WarmingUpResponse().model_dump(), status_code=503)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="warming_up"
+        )
 
     age_ms = int((time.time() - snap.last_update_ts) * 1000)
     stale = (time.time() - snap.last_update_ts) > settings.stale_after_sec
@@ -76,15 +76,20 @@ async def list_metrics():
 async def get_metric(switch_id: str, metric: str):
     snapshot = await get_snapshot()
     if snapshot is None:
-        raise HTTPException(status_code=503, detail="warming_up")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="warming_up"
+        )
 
     switch = snapshot.data.get(switch_id)
     if switch is None:
-        raise HTTPException(status_code=404, detail=f"switch {switch_id} Not Found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"switch {switch_id} Not Found",
+        )
 
     if metric not in switch:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail=f"unknown metric '{metric}' for switch {switch_id}",
         )
 

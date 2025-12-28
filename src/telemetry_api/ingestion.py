@@ -5,9 +5,11 @@ import time
 
 import httpx
 
+from common.etags import normalize_etag
 from common.logging import get_logger
 
-from .store import Snapshot, get_etag, set_snapshot
+from .schemas import Snapshot
+from .store import get_etag, set_snapshot
 
 logger = get_logger(__name__)
 
@@ -102,6 +104,10 @@ async def ingestion_loop(
 
             new_etag = resp.headers.get("ETag")
             csv_text = resp.text
+
+            # save etag without extra "
+            if new_etag:
+                new_etag = normalize_etag(new_etag)
 
             t1 = time.perf_counter()
             try:
